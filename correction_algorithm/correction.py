@@ -4,16 +4,36 @@ Authors: Devika Gumaste, Harsh Benahalkar
 File contains functions for the correction algorithm
 """
 
-from utils.constants import *
+from utils.constants import Constants
 
-# Function to define the error margin
-def error_margin(control, value):
-    if int(value) in range(control - 20, control + 21):
-        return True
-    return False
 
-# Function to check if the angle is in the threshold range
-def check_joint(angles, joint_name, threshold, message):
+def error_margin(control: int, value: int) -> bool:
+    """
+    Check if the value is within the error margin of the control.
+
+    Args:
+        control (int): The control value.
+        value (int): The value to check.
+
+    Returns:
+        bool: True if within margin, False otherwise.
+    """
+    return control - 20 <= int(value) <= control + 20
+
+
+def check_joint(angles: dict, joint_name: str, threshold: int, message: str) -> str | None:
+    """
+    Check if the joint angle is within the threshold.
+
+    Args:
+        angles (dict): Dictionary of joint angles.
+        joint_name (str): Name of the joint to check.
+        threshold (int): Threshold angle.
+        message (str): Feedback message.
+
+    Returns:
+        str | None: Feedback message if outside threshold, None otherwise.
+    """
     if error_margin(threshold, angles[joint_name]):
         return None
     if angles[joint_name] > threshold:
@@ -22,8 +42,17 @@ def check_joint(angles, joint_name, threshold, message):
         return message
     return None
 
-# Function to check the angle
-def check_pose_angle(angles):
+
+def check_pose_angle(angles: dict) -> dict:
+    """
+    Check the pose angles against ground truths.
+
+    Args:
+        angles (dict): Dictionary of joint angles.
+
+    Returns:
+        dict: Feedback for each pose.
+    """
     ground_truths = Constants.GROUND_TRUTHS.value
     feedback = {}
     for pose_name, pose_angles in ground_truths.items():
@@ -34,23 +63,28 @@ def check_pose_angle(angles):
                 personalized_messages = Constants.PERSONALIZED_MESSAGES.value
                 message = personalized_messages.get(pose_name, {}).get(joint, {})
                 error = check_joint(angles, joint, threshold, message)
-            if error:
-                all_correct = False
-                pose_feedback[joint] = error
-        if all_correct:
-            feedback[pose_name] = "Correct"
-        else:
-            feedback[pose_name] = pose_feedback
+                if error:
+                    all_correct = False
+                    pose_feedback[joint] = error
+        feedback[pose_name] = "Correct" if all_correct else pose_feedback
     return feedback
 
-# Function to format the feedback
-def format_feedback(pose_feedback):
-    formatted_feedback = ""
+
+def format_feedback(pose_feedback: dict | str) -> str:
+    """
+    Format the feedback for output.
+
+    Args:
+        pose_feedback (dict | str): Feedback for a pose.
+
+    Returns:
+        str: Formatted feedback string.
+    """
     if pose_feedback == "Correct":
-        formatted_feedback += f" Correct! Keep Going!"
-    else:
-        for joint, error_message in pose_feedback.items():
-            if error_message not in formatted_feedback:
-                formatted_feedback += f"{error_message}"
-                formatted_feedback += " "
-    return formatted_feedback
+        return " Correct! Keep Going!"
+    
+    formatted_feedback = ""
+    for error_message in pose_feedback.values():
+        if error_message not in formatted_feedback:
+            formatted_feedback += f"{error_message} "
+    return formatted_feedback.strip()
